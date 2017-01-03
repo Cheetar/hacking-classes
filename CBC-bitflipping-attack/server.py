@@ -5,10 +5,6 @@ import threading
 from networking import *
 from utils import *
 
-# TODO Make it different for every user
-KEY = os.urandom(16)
-IV = os.urandom(16)
-
 
 def get_cookie(user_data):
     """ Truncate all ';' and '=', so user cannot just simply get
@@ -17,6 +13,8 @@ def get_cookie(user_data):
     user_data = user_data.replace(";", "").replace("=", "")
     return "comment1=cooking%20MCs;userdata=" + user_data + \
         ";comment2=%20like%20a%20pound%20of%20bacon"
+
+# TODO better validation based on splitting by ; and =, then checking tuple
 
 
 def validate_admin(cookie):
@@ -43,10 +41,13 @@ class SimpleCookieServer():
                              args=(client, address)).start()
 
     def listen_to_client(self, c, addr):
+        key = os.urandom(16)
+        iv = os.urandom(16)
+
         sendline(c, "Hello user, please insert your data:")
         user_data = recvline(c)
         cookie = get_cookie(user_data)
-        enc_cookie = enhex(Encrypt_AES_CBC(cookie, KEY, IV))
+        enc_cookie = enhex(Encrypt_AES_CBC(cookie, key, iv))
         sendline(c, "Your cookie: " + enc_cookie)
 
         sendline(c, "I'm a cookie monster, gimme cookie!")
@@ -57,9 +58,9 @@ class SimpleCookieServer():
             c.close()
             exit()
         try:
-            cookie = Decrypt_AES_CBC(enc_cookie, KEY, IV)
+            cookie = Decrypt_AES_CBC(enc_cookie, key, iv)
         except InvalidPadding:
-            sendline(c, "You are tempering with the data. Quitting...")
+            sendline(c, "You are tampering with the data. Quitting...")
             c.close()
             exit()
         if validate_admin(cookie):
